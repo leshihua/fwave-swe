@@ -66,8 +66,8 @@ def setrun(claw_pkg='geoclaw'):
 
 
     # Number of grid cells: Coarsest grid
-    clawdata.num_cells[0] = 50*10
-    clawdata.num_cells[1] = 50*10
+    clawdata.num_cells[0] = 100
+    clawdata.num_cells[1] = 5
 
 
     # ---------------
@@ -110,13 +110,18 @@ def setrun(claw_pkg='geoclaw'):
     # Note that the time integration stops after the final output time.
     # The solution at initial time t0 is always written in addition.
 
-    clawdata.output_style = 1
+    clawdata.output_style = 3
     clawdata.tfinal = 1e10
 
-    if clawdata.output_style==1:
-        days = 12
-        # Output nout frames at equally spaced times up to tfinal:
-        clawdata.num_output_times = int(days) * 3
+    if clawdata.output_style == 1:
+        short_time = False
+        if short_time:
+            days = 1
+            # Output nout frames at equally spaced times up to tfinal:
+            clawdata.num_output_times = int(days) * 24 * 6
+        else:
+            days = 12
+            clawdata.num_output_times = int(days) * 2
         clawdata.tfinal = float(days) * 24.0 * 60.0**2
         clawdata.output_t0 = True  # output at initial (or restart) time?
 
@@ -167,10 +172,10 @@ def setrun(claw_pkg='geoclaw'):
 
     # Desired Courant number if variable dt used, and max to allow without
     # retaking step with a smaller dt:
-    clawdata.cfl_desired = 0.8
-    clawdata.cfl_max = 1.0
-    # clawdata.cfl_desired = 0.4
-    # clawdata.cfl_max = 0.5
+    # clawdata.cfl_desired = 0.8
+    # clawdata.cfl_max = 1.0
+    clawdata.cfl_desired = 0.4
+    clawdata.cfl_max = 0.5
 
     # Maximum number of time steps to allow between output times:
     clawdata.steps_max = 500000
@@ -189,7 +194,7 @@ def setrun(claw_pkg='geoclaw'):
     #              (2, 1, 1.0, geo), (2, 0, 1.0, min), (2, 1, 1.0, geo)
 
     # Order of accuracy:  1 => Godunov,  2 => Lax-Wendroff plus limiters
-    clawdata.order = 2
+    clawdata.order = 1
     
     # Use dimensional splitting? (not yet available for AMR)
     clawdata.dimensional_split = 'unsplit'
@@ -198,7 +203,7 @@ def setrun(claw_pkg='geoclaw'):
     #  0 or 'none'      ==> donor cell (only normal solver used)
     #  1 or 'increment' ==> corner transport of waves
     #  2 or 'all'       ==> corner transport of 2nd order corrections too
-    clawdata.transverse_waves = 2
+    clawdata.transverse_waves = 0
 
     # Number of waves in the Riemann solution:
     clawdata.num_waves = 3
@@ -401,9 +406,9 @@ def setgeo(rundata):
     # Island
     topo_data.test_topography = 5
     topo_data.location = [0.0, 0.0]
-    topo_data.island_width = [100e3, 100e3]
+    topo_data.island_width = [100001.0, 200e3]
     topo_data.island = -10.0
-    topo_data.offshore = -100.0
+    topo_data.offshore = -1000.0
 
     # == setdtopo.data values ==
     rundata.dtopo_data.dtopofiles = []
@@ -412,11 +417,14 @@ def setgeo(rundata):
 
     # == setqinit.data values ==
     qinit_path = './qinit.txt'
-    rundata.qinit_data.qinit_type = 4
+    rundata.qinit_data.qinit_type = 0
     rundata.qinit_data.qinitfiles = [[1, 1, qinit_path]]
+    # make_qinit_file(rundata, path=qinit_path, A=1e-1, sigma=10e3, 
+    #                          center=(0.0, 0.0), refinement_factor=2, 
+    #                          plot=False)
     make_qinit_file(rundata, path=qinit_path, A=1e-1, sigma=10e3, 
-                             center=(-20e3, -20e3), refinement_factor=2, 
-                             plot=False)
+                             center=(-75e3, 0.0), refinement_factor=2, 
+                             plot=False, init_type="plain-wave-sine")
 
     # == setfixedgrids.data values ==
     rundata.fixed_grid_data.fixedgrids = []
@@ -437,12 +445,14 @@ def make_qinit_file(rundata, path="./qinit.txt", A=1.0, sigma=10.0,
                               rundata.clawdata.num_cells[0] * refinement_factor)
     y = numpy.linspace(rundata.clawdata.lower[1], rundata.clawdata.upper[1], 
                               rundata.clawdata.num_cells[1] * refinement_factor)
+    X, Y = numpy.meshgrid(x, y)
     
     if init_type == "gaussian":
-        X, Y = numpy.meshgrid(x, y)
         eta = A * numpy.exp(- ((X - center[0])**2 + (Y - center[1])**2) / sigma**2)
     elif init_type == "random":
         eta = 2e-4 * numpy.random.uniform(-1.0, 1.0, (x.shape[0],y.shape[0]))
+    elif init_type == "plain-wave-sine":
+        eta = A * numpy.sin((X - center[0]) / sigma) * (center[0] < x) * (x < center[0] + sigma * 0.5)
     else:
         raise ValueError("Unknown init_type")
 

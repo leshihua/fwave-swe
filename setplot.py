@@ -41,6 +41,14 @@ def setplot(plotdata):
         # be set here (measured in meters):
         current_data.user['drytol'] = 1.e-2
 
+        # # Square island
+        # current_data.user['island_x'] = [-52e3, -52e3, 52e3, 52e3, -52e3]
+        # current_data.user['island_y'] = [-52e3, 52e3, 52e3, -52e3, -52e3]
+
+        # Strip island
+        current_data.user['island_x'] = [-52e3, -52e3, 52e3, 52e3, -52e3]
+        current_data.user['island_y'] = [-102e3, 102e3, 102e3, -102e3, -102e3]
+
     plotdata.beforeframe = set_drytol
 
     # To plot gauge locations on pcolor or contour plot, use this as
@@ -49,13 +57,13 @@ def setplot(plotdata):
     # surface_range = 1e-4
     # speed_max = 1.e-5
 
-    surface_range = 1e-1
-    speed_max = 1.e-1
+    surface_range = 1e-2
+    speed_max = 1.e-2
 
     xlimits = [amrdata.lower[0], amrdata.upper[0]]
     ylimits = [amrdata.lower[1], amrdata.upper[1]]
     surface_limits = [-surface_range,surface_range]
-    speed_limits = [0.0, speed_max * 10.0]
+    speed_limits = [0.0, speed_max]
 
     def addgauges(current_data):
         from clawpack.visclaw import gaugetools
@@ -65,6 +73,12 @@ def setplot(plotdata):
     def after_axes(cd):
         surge.days_figure_title(cd)
         addgauges(cd)
+        plt.plot(cd.user['island_x'], cd.user['island_y'], 'k--')
+
+    def after_axes_slice(cd, y_bounds=[-1, 1]):
+        surge.days_figure_title(cd)
+        for x in cd.user['island_x']:
+            plt.plot([x, x], y_bounds, 'k--')
 
     #-----------------------------------------
     # Figure for pcolor plot
@@ -105,7 +119,7 @@ def setplot(plotdata):
     plotfigure = plotdata.new_plotfigure(name='Velocity Components - Entire Domain',  
                                          figno=2)
     plotfigure.kwargs['figsize'] = (16,6)
-    plotfigure.show = True
+    plotfigure.show = False
 
     # X-Component
     plotaxes = plotfigure.new_plotaxes()
@@ -147,28 +161,13 @@ def setplot(plotdata):
     
     surge.add_land(plotaxes)
 
-    # Bathymetry
-    # plotfigure = plotdata.new_plotfigure(name='Topography', figno=3)
-    # plotfigure.show = True
-
-    # plotaxes = plotfigure.new_plotaxes('pcolor')
-    # plotaxes.title = 'Topography'
-    # plotaxes.scaled = True
-    # plotaxes.xlimits = xlimits
-    # plotaxes.ylimits = ylimits
-    # plotaxes.afteraxes = after_axes
-
-    # surge.add_topo(plotaxes, topo_min=-100.0, topo_max=20.0)
-    # plotaxes.plotitem_dict['surface'].amr_celledges_show = [1,1,1,1]
-    # plotaxes.plotitem_dict['land'].amr_celledges_show = [1,1,1,1]
-
     # ========================================================================
     #  Water Momenta Components
     # ========================================================================
     plotfigure = plotdata.new_plotfigure(name='Momentum Components - Entire Domain',  
                                          figno=3)
     plotfigure.kwargs['figsize'] = (16,6)
-    plotfigure.show = True
+    plotfigure.show = False
 
     # X-Component
     plotaxes = plotfigure.new_plotaxes()
@@ -214,7 +213,7 @@ def setplot(plotdata):
     #  Topography
     # ============
     plotfigure = plotdata.new_plotfigure(name="Topography")
-    plotfigure.show = True
+    plotfigure.show = False
     plotaxes = plotfigure.new_plotaxes()
     plotaxes.title = "Topography"
     plotaxes.scaled = True
@@ -228,11 +227,71 @@ def setplot(plotdata):
                                        0.00001:[.5,.7,0],
                                        1:[.2,.5,.2]})
     plotitem.pcolor_cmap = cmap
-    plotitem.pcolor_cmin = -10.0
-    plotitem.pcolor_cmax = 10.0
+    plotitem.pcolor_cmin = -100.0
+    plotitem.pcolor_cmax = 0.0
     plotitem.add_colorbar = True
     plotitem.amr_celledges_show = [0,0,0]
     plotitem.amr_patchedges_show = [0, 0, 0]
+
+    # =====================
+    #  Slice through y = 0
+    # =====================
+    slice_index = 3
+    def slice_surface(cd):
+        return cd.x[:, slice_index], cd.q[3, :, slice_index]
+    
+    def slice_momentum(cd):
+        return cd.x[:, slice_index], cd.q[1, :, slice_index]
+
+    def slice_velocity(cd):
+        u = cd.q[1, :, slice_index] / cd.q[0, :, slice_index]
+        return cd.x[:, slice_index], u
+
+    plotfigure = plotdata.new_plotfigure(name="Slice eta, y=0")
+    plotfigure.show = True
+
+    plotaxes = plotfigure.new_plotaxes()
+    plotaxes.title = "Surface Slice y = 0"
+    plotaxes.xlimits = xlimits
+    plotaxes.ylimits = surface_range
+    plotaxes.afteraxes = lambda cd: after_axes_slice(cd, surface_limits)
+
+    plotitem = plotaxes.new_plotitem(plot_type="1d_from_2d_data")
+    plotitem.map_2d_to_1d = slice_surface
+    plotitem.plot_var = 3
+    plotitem.plotstyle = 'k-o'
+    plotitem.show = True
+
+    plotfigure = plotdata.new_plotfigure(name="Slice u, y=0")
+    plotfigure.show = True
+
+    plotaxes = plotfigure.new_plotaxes()
+    plotaxes.title = "Velocity-x Slice y = 0"
+    plotaxes.xlimits = xlimits
+    plotaxes.ylimits = [-speed_limits[1], speed_limits[1]]
+    plotaxes.afteraxes = lambda cd: after_axes_slice(cd, [-speed_limits[1], speed_limits[1]])
+
+    plotitem = plotaxes.new_plotitem(plot_type="1d_from_2d_data")
+    plotitem.map_2d_to_1d = slice_velocity
+    plotitem.plot_var = 1
+    plotitem.plotstyle = 'k-o'
+    plotitem.show = True
+
+    plotfigure = plotdata.new_plotfigure(name="Slice hu, y=0")
+    plotfigure.show = True
+
+    plotaxes = plotfigure.new_plotaxes()
+    plotaxes.title = "hu Slice y = 0"
+    plotaxes.xlimits = xlimits
+    momentum_limits = [-speed_limits[1] * 1000.0, speed_limits[1] * 1000.0] 
+    plotaxes.ylimits = momentum_limits
+    plotaxes.afteraxes = lambda cd: after_axes_slice(cd, momentum_limits)
+
+    plotitem = plotaxes.new_plotitem(plot_type="1d_from_2d_data")
+    plotitem.map_2d_to_1d = slice_momentum
+    plotitem.plot_var = 1
+    plotitem.plotstyle = 'k-o'
+    plotitem.show = True
 
     #-----------------------------------------
     # Figures for gauges

@@ -53,7 +53,7 @@ MODULES = \
 
   
   # ./rpn2_shallow_bathymetry_fwave.f90 \
-  # ./rpt2_shallow_bathymetry_fwave.f90 \
+  # ~/Desktop/fwave_solver_test/rpt2_shallow_bathymetry_fwave.f90 \
 
 SOURCES = \
   $(RIEMANN)/rpn2_geoclaw.f \
@@ -68,7 +68,7 @@ SOURCES = \
   $(GEOLIB)/b4step2.f90 \
   $(GEOLIB)/tick.f \
   $(GEOLIB)/valout.f \
-  $(GEOLIB)/qinit.f90 \
+  ./qinit.f90 \
   $(GEOLIB)/bc2amr.f \
   $(GEOLIB)/allowflag.f90 \
   $(GEOLIB)/cellgridintegrate2.f \
