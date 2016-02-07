@@ -89,7 +89,7 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,maux,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,ap
         ! Flux differences
         delta(1) = hu_r - hu_l
         delta(normal_dir) = phi_r - phi_l + 0.5d0 * g * (h_r + h_l) * (b_r - b_l)
-        delta(tangential_dir) = hu_r * v_r - hu_l * v_l
+        delta(tangential_dir) = h_r * u_r * v_r - h_l * u_l * v_l
    
         ! Wave speeds - Einfeldt speeds
         s(1, i) = min(u_hat - c_hat, u_l - sqrt(g * h_l))
@@ -98,8 +98,8 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,maux,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,ap
 
         ! Wave strengths
         beta(1) = (s(3, i) * delta(1) - delta(2)) / (s(3, i) - s(1, i))
-        beta(2) = delta(3) - v_l - v_r
         beta(3) = (delta(2) - s(1, i) * delta(1)) / (s(3, i) - s(1, i))
+        beta(2) = delta(3) - v_l * beta(1) - v_r * beta(3)
 
         ! F-Waves
         fwave(:, 1, i) = [1.d0, s(1, i), v_l] * beta(1)
@@ -136,5 +136,8 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,maux,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,ap
             end if
         end do
     end do
+    
+    print *, s
+    stop
     
 end subroutine rpn2
